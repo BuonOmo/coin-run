@@ -1,0 +1,67 @@
+#!/usr/bin/env zsh
+# Usage:
+#   VERBOSE=1 ./test.zsh 1 2 3 4 5
+#   ./test.zsh 4 2
+#   ./test.zsh
+
+if [[ "${VERBOSE+x}" = "x" ]]; then
+	verbose=true
+else
+	verbose=false
+fi
+
+: ${SOLUTION:=./solution.rb}
+
+shout_out() {
+	echo "\n\e[7;1m $@ \e[27;0m\n"
+}
+
+underline() {
+	echo "\e[4m$@\e[0m"
+}
+
+tempfile=$(mktemp)
+actual=$tempfile
+
+if (( $# > 0 )); then
+	run_count=$#
+	runs=($@)
+else
+	run_count=5
+	runs=({1..5})
+fi
+
+errors=0
+for i in $runs; do
+    expected=tests/output.$i
+	if $verbose; then
+		shout_out "TEST $i"
+		underline "test inputs"
+		echo
+		cat tests/input.$i
+		echo
+		echo
+		underline "run logs"
+	fi
+
+
+	$SOLUTION < tests/input.$i > $actual
+
+
+    diff $expected $actual > /dev/null && continue
+
+	(( errors++ ))
+	shout_out "ERROR TEST $i"
+	diff --ignore-blank-lines --side-by-side --suppress-common-lines \
+		=(
+			echo "EXPECTED"
+			cat $expected
+		) \
+		=(
+			echo "ACTUAL"
+			cat $actual
+		)
+done
+
+echo "Test finish, $(( run_count - errors ))/$run_count tests passed"
+rm $tempfile
